@@ -1,0 +1,212 @@
+#include <iostream>
+#include "std_lib_facilities.h"
+
+class token  // Creating a new class called token
+{            // The token is a character/value pair
+public:
+	char kind;
+	double value;
+	token(char ch)
+		:kind(ch), value(0) {}
+	token(char ch, double val)
+		:kind(ch), value(val) {}
+};
+
+class token_stream  // Creating a new class called token_stream
+{                   // This is where token info can be pulled from
+public:             // and put back as needed
+	token_stream();
+	token get();
+	void putback(token t);
+private:
+	bool full;
+	token buffer;
+};
+
+token_stream::token_stream()        // token_stream function is a member of
+	:full(false), buffer(0) {}  // token_stream class
+
+void token_stream::putback(token t) // putback() function is a member of
+{                                   // token_stream
+	if (full) error("Can't put back into a full buffer");
+	buffer = t;
+	full = true;
+}
+
+token token_stream::get()         // get() function is a member of token_stream
+{                                 // and returns a token
+	if (full)
+	{
+		full = false;
+		return buffer;
+	}
+
+	char ch;
+	cin >> ch;
+
+	switch (ch)
+	{
+	case '=':
+	case 'x':
+	case '{': case '}': case '(': case ')': case '+':
+	case '-': case '*': case '/': case '!':
+		return token(ch);
+	case '.':
+	case '0': case '1': case '2': case '3': case '4':
+	case '5': case '6': case '7': case '8': case '9':
+	{
+		cin.putback(ch);
+		double val;
+		cin >> val;
+		return token('8', val);
+	}
+	default:
+		error("Bad token");
+	}
+}
+
+token_stream ts;      // Declare a new token_stream named ts
+
+double expression();  // Declare a new function named expression()
+
+double primary()      // Function deals with brackets or
+{                     // Swaps the character out for it's value
+	token t = ts.get();
+	switch (t.kind)
+	{
+	case '{':
+	{
+		double d = expression();
+		t = ts.get();
+		if (t.kind != '}') error("'}' expected");
+		return d;
+	}
+	case '(':
+	{
+		double d = expression();
+		t = ts.get();
+		if (t.kind != ')') error("')' expected");
+		return d;
+	}
+	case '8':
+		return t.value;
+	default:
+		error("Primary expected");
+	}
+}
+
+double factorial()  
+{
+	double left = primary();
+	token t = ts.get();
+	while (true)
+	{
+		switch (t.kind)
+		{
+		case '!':
+		{
+			int x = left;
+			if (x == 0) { x = 1; }
+			else if (x < 0)
+			{
+				error("Factorial must be a positive integer"); keep_window_open();
+			}
+			else for (int y = x - 1; y > 0; --y)
+			{
+				x = x * y;
+			}
+			t = ts.get();
+			double left = x;
+			ts.putback(t);
+			return left;
+		}
+		default:
+			ts.putback(t);
+			return left;
+		}
+	}
+}
+
+double term()  // Function deals with multiplication and division
+{
+	double left = factorial();
+	token t = ts.get();
+	while (true)
+	{
+		switch (t.kind)
+		{
+		case '*':
+			left *= factorial();
+			t = ts.get();
+			break;
+		case '/':
+		{
+			double d = factorial();
+			if (d == 0) error("Can't divide by 0");
+			left /= d;
+			t = ts.get();
+			break;
+		}
+		default:
+			ts.putback(t);
+			return left;
+		}
+	}
+}
+
+double expression()  // Function deals with addition and subtraction
+{
+	double left = term();
+	token t = ts.get();
+	while (true)
+	{
+		switch (t.kind)
+		{
+		case '+':
+			left += term();
+			t = ts.get();
+			break;
+		case '-':
+			left -= term();
+			t = ts.get();
+			break;
+		default:
+			ts.putback(t);
+			return left;
+		}
+	}
+}
+
+int main()
+try {
+	double val = 0;
+
+	cout << "A heck of a lot of code has gone into even getting this calculator to the point where you're reading this.\n"
+		 << "You better have some juicy sums for me.\n";
+	
+
+	while (cin)
+	{
+		token t = ts.get();
+		if (t.kind == 'x') break;
+		else if (t.kind == '=')
+			cout << "= " << val << '\n';
+		else
+			ts.putback(t);
+		val = expression();
+	}
+	keep_window_open();
+	return 0;
+}
+catch (exception& e)
+{
+	cerr << "Error: " << e.what() << '\n';
+	keep_window_open();
+	return 1;
+}
+catch (...)
+{
+	cerr << "Oops: Unknown Exception!\n";
+	keep_window_open();
+	return 2;
+}
